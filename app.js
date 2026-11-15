@@ -16,9 +16,9 @@ app.use(logRequest);
 
 // TODO STORAGE
 let todos = [
-    { id: 1, task: 'Learn JavaScript', completed: false },
-    { id: 2, task: 'Learn Express.js', completed: true },
-    { id: 3, task: 'Build a Todo API', completed: false }
+    { id: 1, task: 'Learn Node.js', completed: false },
+    { id: 2, task: 'Build CRUD API', completed: false },
+    { id: 3, task: 'Learn Express.js', completed: true }
 ];
 
 // GET ACTIVE TODOS
