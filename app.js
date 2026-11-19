@@ -1,84 +1,57 @@
-require('dotenv').config();
-
 const express = require('express');
 const Joi = require('joi');
-const cors = require('cors');
 
 // IMPORT MIDDLEWARES
 const logRequest = require('./middlewares/logger');
 const validatePost = require('./middlewares/validatePost');
 const validatePatch = require('./middlewares/validatePatch');
 const errorHandler = require('./middlewares/errorHandler');
-const connectDB = require('./database/db');
-const Todo = require('./models/todo.model');
 
 const app = express();
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3000;
 
 // GLOBAL MIDDLEWARES
 app.use(express.json());
 app.use(logRequest);
-app.use(cors());
-connectDB();
+
+// TODO STORAGE
+let todos = [
+    { id: 1, task: 'Learn Node.js', completed: false },
+    { id: 2, task: 'Build CRUD API', completed: false },
+    { id: 3, task: 'Learn Express.js', completed: true }
+];
+
+// GET ACTIVE TODOS
+app.get('/todos/active', (req, res) => {
+    const activeTodos = todos.filter(todo => !todo.completed);
+
+    res.status(200).json({
+        success: true,
+        data: activeTodos
+    });
+});
 
 // GET ALL TODOS
-app.get('/todos', async (req, res) => {
-    const todos = await Todo.find();
+app.get('/todos', (req, res) => {
     res.status(200).json({
         success: true,
         data: todos
     });
 });
 
-// GET COMPLETED TODOS
-app.get('/todos/completed', async (req, res) => {
-try {
-
-    const completedTodos = await Todo.find({ completed: true });
-
-    res.status(200).json({
-        success: true,
-        data: completedTodos
-    });
-} catch (error) {
-    next(error);
-}
-});
-
-// GET TODO BY ID
-app.get('/todos/:id', async (req, res) => {
-   try {
-
-    const todo = await Todo.findById(req.params.id);
-
-    if (!todo) {
-        return res.status(404).json({
-            success: false,
-            message: 'Todo not found'
-        });
-    }
-
-    res.status(200).json({
-        success: true,
-        data: todo
-    });
-} catch (error) {
-    next(error);
-}
-});
-
 // POST CREATE TODO
-app.post('/todos', validatePost, async (req, res, next) => {
-    
-    const { task, completed } = req.body;
-    const newTodo = new Todo({
-        task,
-        completed
-    });
-    
-    await newTodo.save();
+app.post('/todos', validatePost, (req, res, next) => {
     try {
-   
+        const newTodo = {
+            id: todos.length
+                ? Math.max(...todos.map(todo => todo.id)) + 1
+                : 1,
+            task: req.body.task,
+            completed: req.body.completed ?? false
+        };
+
+        todos.push(newTodo);
+
         res.status(201).json({
             success: true,
             message: 'Todo created successfully',
@@ -90,11 +63,10 @@ app.post('/todos', validatePost, async (req, res, next) => {
 });
 
 // PATCH UPDATE TODO
-app.patch('/todos/:id', validatePatch, async (req, res, next) => {
+app.patch('/todos/:id', validatePatch, (req, res, next) => {
     try {
-        const todo = await Todo.findByIdAndUpdate(req.params.id, req.body, {
-            new: true,
-        });
+        const id = Number(req.params.id);
+        const todo = todos.find(todo => todo.id === id);
 
         if (!todo) {
             return res.status(404).json({
@@ -122,9 +94,40 @@ app.patch('/todos/:id', validatePatch, async (req, res, next) => {
 });
 
 // DELETE TODO
-app.delete('/todos/:id', async (req, res) => {
-try {
-    const todo = await Todo.findByIdAndDelete(req.params.id);
+app.delete('/todos/:id', (req, res) => {
+    const id = Number(req.params.id);
+    const index = todos.findIndex(todo => todo.id === id);
+
+    if (index === -1) {
+        return res.status(404).json({
+            success: false,
+            message: 'Todo not found'
+        });
+    }
+
+    const deletedTodo = todos.splice(index, 1);
+
+    res.status(200).json({
+        success: true,
+        message: 'Todo deleted successfully',
+        data: deletedTodo[0]
+    });
+});
+
+// GET COMPLETED TODOS
+app.get('/todos/completed', (req, res) => {
+    const completedTodos = todos.filter(todo => todo.completed);
+
+    res.status(200).json({
+        success: true,
+        data: completedTodos
+    });
+});
+
+// GET TODO BY ID
+app.get('/todos/:id', (req, res) => {
+    const id = Number(req.params.id);
+    const todo = todos.find(todo => todo.id === id);
 
     if (!todo) {
         return res.status(404).json({
@@ -135,11 +138,8 @@ try {
 
     res.status(200).json({
         success: true,
-        message: `Todo ${req.params.id} deleted`,
+        data: todo
     });
-} catch (error) {
-    next(error);
-}
 });
 
 // GLOBAL ERROR HANDLER (MUST BE LAST)
