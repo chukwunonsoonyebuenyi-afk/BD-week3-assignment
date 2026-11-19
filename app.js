@@ -36,7 +36,7 @@ try {
 
     const completedTodos = await Todo.find({ completed: true });
 
-    res.status(200).json({git
+    res.status(200).json({
         success: true,
         data: completedTodos
     });
